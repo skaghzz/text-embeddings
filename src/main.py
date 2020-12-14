@@ -4,10 +4,11 @@ import time
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
-# Use tensorflow 1 behavior to match the Universal Sentence Encoder
-# examples (https://tfhub.dev/google/universal-sentence-encoder/2).
-import tensorflow.compat.v1 as tf
 import tensorflow_hub as hub
+
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+
 
 ##### INDEXING #####
 
@@ -106,9 +107,9 @@ def handle_query():
 
 ##### EMBEDDING #####
 
-def embed_text(text):
-    vectors = session.run(embeddings, feed_dict={text_ph: text})
-    return [vector.tolist() for vector in vectors]
+def embed_text(input):
+    vectors = model(input)
+    return [vector.numpy().tolist() for vector in vectors]
 
 ##### MAIN SCRIPT #####
 
@@ -119,29 +120,20 @@ if __name__ == '__main__':
     DATA_FILE = "data/posts/posts.json"
     BATCH_SIZE = 1000
 
-    SEARCH_SIZE = 5
+    SEARCH_SIZE = 3
 
     GPU_LIMIT = 0.5
 
     print("Downloading pre-trained embeddings from tensorflow hub...")
-    embed = hub.Module("https://tfhub.dev/google/universal-sentence-encoder/2")
-    text_ph = tf.placeholder(tf.string)
-    embeddings = embed(text_ph)
-    print("Done.")
+    module_url = "https://tfhub.dev/google/universal-sentence-encoder/4"
+    model = hub.load(module_url)
+    print("module %s loaded" % module_url)
 
-    print("Creating tensorflow session...")
-    config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = GPU_LIMIT
-    session = tf.Session(config=config)
-    session.run(tf.global_variables_initializer())
-    session.run(tf.tables_initializer())
-    print("Done.")
+    #tf.config.gpu.set_per_process_memory_growth(True)
 
     client = Elasticsearch()
 
     index_data()
     run_query_loop()
 
-    print("Closing tensorflow session...")
-    session.close()
     print("Done.")
