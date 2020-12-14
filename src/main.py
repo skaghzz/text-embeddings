@@ -6,10 +6,6 @@ from elasticsearch.helpers import bulk
 
 import tensorflow_hub as hub
 
-import os
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
-
-
 ##### INDEXING #####
 
 def index_data():
